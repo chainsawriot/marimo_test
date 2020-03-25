@@ -1,0 +1,50 @@
+---
+title: "Testing Marimo stopwords on a corpus of traditional Chinese HK Gov press releases, tokenized using quanteda::tokens"
+output: github_document
+author:
+  - Chung-hong Chan ^[University of Mannheim]
+---
+
+
+```r
+require(rio)
+require(quanteda)
+require(tidyverse)
+hk_pr <- corpus(rio::import("hongkonggov_press_releases.csv")$content)
+saveRDS(hk_pr, "hk_pr.RDS")
+```
+
+```{r}
+require(rio)
+require(quanteda)
+require(tidyverse)
+hk_pr <- tokens(readRDS('hk_pr.RDS'))
+hk_pr
+```
+
+```{r}
+stopwords <- unlist(yaml::read_yaml("stopwords_zh_traditional.yml"))
+chinese_stopwords <- as.list(unlist(yaml::read_yaml("stopwords_zh_traditional.yml")))
+names(chinese_stopwords) <- chinese_stopwords
+matched_words <- tokens_lookup(hk_pr, dictionary(chinese_stopwords))
+```
+
+Used stopwords
+
+```{r, results = "asis"}
+matched_words %>% dfm %>% textstat_frequency -> stopwords_freq
+stopwords_freq %>% knitr::kable()
+```
+
+Unused stopwords
+
+```{r}
+setdiff(stopwords, stopwords_freq$feature) ### mostly are those dative and processive pronouns
+```
+
+Potentially missing stopwords
+
+```{r}
+hkpr_top_features <- topfeatures(dfm(hk_pr), n = 500)
+setdiff(names(hkpr_top_features), stopwords)
+```
