@@ -1,0 +1,42 @@
+---
+title: "Identifying additional stopwords by GloVe"
+output: github_document
+author:
+  - Chung-hong Chan ^[University of Mannheim]
+---
+
+
+```{r}
+require(quanteda)
+require(text2vec)
+
+get_equivalent <- function(x, seeds) {
+    ##stopifnot(is.fcm(x))
+    y <- dfm_select(x, seeds)
+    x <- dfm_remove(x, seeds)
+    temp <- proxyC::simil(x, y, margin = 2)
+    sort(apply(temp, 1, max), decreasing = TRUE)
+}
+
+hk_pr <- unlist(tokens(readRDS('hk_pr.RDS'), what = "sentence"))
+names(hk_pr) <- seq(1, length(hk_pr))
+stop_words <- dictionary(file = "stopwords_zh_traditional.yml")
+
+
+## hk_pr %>% tokens(remove_punct = TRUE) %>% fcm("window", window = 1, tri = FALSE, ordered = TRUE) -> hk_pr_fcm
+
+
+## head(get_equivalent(hk_pr_fcm, unlist(stop_words$pronoun)), 30)
+
+pr_fcm2 <- fcm(tokens(hk_pr), context = "window", count = "weighted", weights = 1 / (1:5), tri = TRUE)
+glove <- GlobalVectors$new(rank = 50, x_max = 10)
+wv_main <- glove$fit_transform(pr_fcm2, n_iter = 40,
+                               convergence_tol = 0.01, n_threads = 8)
+wv_context <- glove$components
+word_vectors <- wv_main + t(wv_context)
+wv_dfm <- t(as.dfm(word_vectors))
+```
+
+```{r}
+head(get_equivalent(wv_dfm, unlist(stop_words)), 400)
+```
